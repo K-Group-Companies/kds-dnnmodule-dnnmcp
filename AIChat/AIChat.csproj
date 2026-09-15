@@ -236,9 +236,12 @@
     <Compile Include="Tools\GetUrlHtml.cs" />
     <Compile Include="Tools\SendEmail.cs" />
     <Compile Include="Tools\ToolsExtensions.cs" />
+    <Compile Include="Tools\ToolKit.cs" />
+    <Compile Include="Tools\FileTools.cs" />
+    <Compile Include="Tools\ModuleTools.cs" />
+    <Compile Include="Tools\TemplateSettingsSchema.cs" />
     <Compile Include="Tools\UpdateHtmlModule.cs" />
     <Compile Include="Tools\UpdatePage.cs" />
-    <Compile Include="Tools\WriteFile.cs" />
     <Compile Include="Tools\WriteSystemFile.cs" />
   </ItemGroup>
   <ItemGroup>

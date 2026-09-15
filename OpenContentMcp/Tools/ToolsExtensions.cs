@@ -10,7 +10,7 @@ namespace Satrabel.OpenContentMcp.Tools
             services.AddTransient<IMcpProvider, ManageTemplatesTool>();
             services.AddTransient<IMcpProvider, AddOpenContentTool>();
             services.AddTransient<IMcpProvider, GetOpenContentTool>();
-            services.AddTransient<IMcpProvider, UpdateOpenContentTool>();
+            services.AddTransient<IMcpProvider, OpenContentModuleTools>();
         }
     }
 }

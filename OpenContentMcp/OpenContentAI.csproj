@@ -77,7 +77,7 @@
     <Compile Include="Tools\ManageTemplatesTool.cs" />
     <Compile Include="Tools\TemplateInfo.cs" />
     <Compile Include="Tools\ToolsExtensions.cs" />
-    <Compile Include="Tools\UpdateOpenContentTool.cs" />
+    <Compile Include="Tools\OpenContentModuleTools.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="airules\global.md" />

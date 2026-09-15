@@ -14,11 +14,12 @@ namespace Dnn.Mcp.WebApi.Tools
 
             services.AddTransient<IMcpProvider, AddModuleTool>();
             services.AddTransient<IMcpProvider, GetModulesTool>();
+            services.AddTransient<IMcpProvider, ModuleTools>();
 
             services.AddTransient<IMcpProvider, GetFoldersTool>();
             services.AddTransient<IMcpProvider, GetFilesTool>();
             services.AddTransient<IMcpProvider, ReadFileTool>();
-            services.AddTransient<IMcpProvider, WriteFileTool>();
+            services.AddTransient<IMcpProvider, FileTools>();
 
             services.AddTransient<IMcpProvider, GetSystemFilesTool>();
             services.AddTransient<IMcpProvider, ReadSystemFileTool>();
