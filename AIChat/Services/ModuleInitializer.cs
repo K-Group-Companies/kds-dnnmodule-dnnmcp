@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Dnn.Mcp.WebApi.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +27,11 @@ namespace Dnn.Mcp.WebApi
 
                 // Register sample tools
                 //SampleTools.RegisterSampleTools(registry);
-                var providers = dependencyProvider.GetServices<IMcpProvider>();
+                // Providers marked IMcpProviderOverride register last, so that a satellite
+                // assembly can replace a built-in tool of the same name. OrderBy is stable,
+                // so every other provider keeps its resolution order.
+                var providers = dependencyProvider.GetServices<IMcpProvider>()
+                    .OrderBy(p => p is IMcpProviderOverride ? 1 : 0);
                 foreach (var provider in providers)
                 {
                     provider.Register(registry);
