@@ -44,7 +44,7 @@ namespace Satrabel.AIChat.Tools
                     + "APIs. Supports text or base64 content and can overwrite existing files. "
                     + "Paths are relative to the portal home directory, e.g. "
                     + "OpenContent/Files/1051/photo.jpg.",
-                Category = "files",
+                Category = "Files",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {
@@ -77,7 +77,7 @@ namespace Satrabel.AIChat.Tools
                 Description =
                     "Delete a file from the portal's file system, removing both the physical "
                     + "file and its DNN Files record.",
-                Category = "files",
+                Category = "Files",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {

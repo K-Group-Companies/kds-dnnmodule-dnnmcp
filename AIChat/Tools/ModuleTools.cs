@@ -46,7 +46,7 @@ namespace Satrabel.AIChat.Tools
                     + "its enums. Writing them as individual module settings has no effect, so "
                     + "unrecognised names are rejected rather than reported as written. Routed "
                     + "through ModuleController so DNN's cache is cleared.",
-                Category = "modules",
+                Category = "Modules",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {
@@ -79,7 +79,7 @@ namespace Satrabel.AIChat.Tools
                     + "the 'Display Container?' checkbox in module settings — set it false to render "
                     + "the module bare, with no container chrome. Omitted fields are left unchanged. "
                     + "Routed through ModuleController so DNN's cache is cleared.",
-                Category = "modules",
+                Category = "Modules",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {
@@ -108,7 +108,7 @@ namespace Satrabel.AIChat.Tools
                 Description =
                     "Move a module to a different pane and/or change its order within the pane. "
                     + "Use get-modules to discover current PaneName values for a page.",
-                Category = "modules",
+                Category = "Modules",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {
@@ -137,7 +137,7 @@ namespace Satrabel.AIChat.Tools
                 Description =
                     "Delete a module from a page. Soft-deletes to the DNN Recycle Bin by "
                     + "default, so it can be restored from the page's settings.",
-                Category = "modules",
+                Category = "Modules",
                 ReadOnly = false,
                 Parameters = new List<ToolParameter>
                 {
