@@ -14,7 +14,7 @@
       <releaseNotes src="ReleaseNotes.txt"></releaseNotes>
       <azureCompatible>true</azureCompatible>
       <dependencies>
-        <dependency type="CoreVersion">09.03.00</dependency>
+        <dependency type="CoreVersion">10.03.02</dependency>
         <dependency type="ManagedPackage" version="01.00.00">AIChat</dependency>
         <dependency type="ManagedPackage" version="01.00.00">OpenContent</dependency>
       </dependencies>
