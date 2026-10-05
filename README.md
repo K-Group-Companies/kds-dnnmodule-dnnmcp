@@ -1,5 +1,7 @@
 # DNN AI Assistant & MCP Server
 
+> **K Group fork.** This is K Group's fork of [sachatrauwaen/AIChat](https://github.com/sachatrauwaen/AIChat) with extra MCP tools and fixes. See **[KGROUP.md](KGROUP.md)** for what changed, how to build, and how to use the MCP server with Claude Code.
+
 This extension adds an AI-powered chat to the DNN PersonaBar and exposes DNN as an **MCP (Model Context Protocol) server** so external AI clients can use your portal's tools.
 
 
