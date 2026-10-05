@@ -178,13 +178,19 @@ Claude Desktop needs `mcp-remote` instead. The MCP Settings page in DNN shows th
 
 ## API keys and identity
 
-- **One key per portal.** Generating a new key replaces the old one for everyone using
-  that site. Coordinate before regenerating on a shared site like dev.
-- **Requests run as whoever generated the key** (stored in the `DnnMcp_ApiKeyCreatedBy`
-  portal setting). Every MCP edit is attributed to that user, with that user's
-  permissions. If that user is deleted, writes start failing (a warning is logged).
-- Keys can expire (the validity setting). An expired key looks like a connection failure
-  in `/mcp`.
+- **One key per portal.** The key is a single portal setting (`DnnMcp_ApiKey`) and each
+  request's Bearer token is compared against it. There is no list of keys. Generating a
+  new key replaces the old one for everyone using that site, so coordinate before
+  regenerating on a shared site like dev.
+- **The key can't be read back.** MCP Settings shows it as `********` once saved. To use
+  an existing key, get it from whoever generated it, through a secure channel. Otherwise
+  generate a new one, which breaks theirs.
+- **Requests run as whoever last generated the key** (stored in the
+  `DnnMcp_ApiKeyCreatedBy` portal setting). Every MCP edit is attributed to that user,
+  with that user's permissions. Saving other settings, such as tool ticks, doesn't change
+  this. If that user is deleted, writes start failing (a warning is logged).
+- Keys expire after 90 days by default (the validity setting). An expired key looks like
+  a connection failure in `/mcp`.
 
 ## Tools
 
