@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeoAI", "SeoTools\SeoAI.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyDNNNewsAI", "EasyDNNNewsMcp\EasyDNNNewsAI.csproj", "{A732B82D-75B2-4198-BDFE-28A3DEE3C2EE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveFormsAI", "LiveFormsMcp\LiveFormsAI.csproj", "{56EBDAFF-8759-41C5-8233-E40CDC7A7919}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{A732B82D-75B2-4198-BDFE-28A3DEE3C2EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A732B82D-75B2-4198-BDFE-28A3DEE3C2EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A732B82D-75B2-4198-BDFE-28A3DEE3C2EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{56EBDAFF-8759-41C5-8233-E40CDC7A7919}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56EBDAFF-8759-41C5-8233-E40CDC7A7919}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56EBDAFF-8759-41C5-8233-E40CDC7A7919}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56EBDAFF-8759-41C5-8233-E40CDC7A7919}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
