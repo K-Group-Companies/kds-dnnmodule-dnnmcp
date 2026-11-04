@@ -1,0 +1,41 @@
+<dotnetnuke type="Package" version="5.0">
+  <packages>
+    <package name="EasyDNNNewsAI" type="Library" version="01.00.00">
+      <friendlyName>EasyDNNNews Tool Provider</friendlyName>
+      <description>EasyDNNNews Tool Provider Library - MCP tools to list, create, update and publish EasyDNNNews articles and categories.</description>
+      <iconFile></iconFile>
+      <owner>
+        <name>K-Group Companies</name>
+        <organization>K-Group Companies</organization>
+        <url>https://www.kgroupcompanies.com</url>
+        <email>support@kgroupcompanies.com</email>
+      </owner>
+      <license src="License.txt"></license>
+      <releaseNotes src="ReleaseNotes.txt"></releaseNotes>
+      <azureCompatible>true</azureCompatible>
+      <dependencies>
+        <dependency type="CoreVersion">10.03.02</dependency>
+        <dependency type="ManagedPackage" version="01.02.00">AIChat</dependency>
+        <dependency type="ManagedPackage" version="15.00.00">EasyDNNnews</dependency>
+      </dependencies>
+      <components>
+        <component type="ResourceFile">
+          <resourceFiles>
+            <basePath>DesktopModules/OpenContentAIChat</basePath>
+            <resourceFile>
+              <name>Resources.zip</name>
+            </resourceFile>
+          </resourceFiles>
+        </component>
+        <component type="Assembly">
+          <assemblies>
+            <assembly>
+              <name>KGroup.EasyDNNNewsAI.dll</name>
+              <path>bin</path>
+            </assembly>
+          </assemblies>
+        </component>
+      </components>
+    </package>
+  </packages>
+</dotnetnuke>
