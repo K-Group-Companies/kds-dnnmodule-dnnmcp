@@ -147,6 +147,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             list.Add(ToolKit.Param("imagePath", "string", "Main image: portal-relative path of an existing file, e.g. Images/blog/hero.jpg.", false));
             list.Add(ToolKit.Param("imageUrl", "string", "Main image: public http(s) URL to download (jpg, png, gif, webp, 10 MB max).", false));
             list.Add(ToolKit.Param("imageTitle", "string", "Main image title / alt text.", false));
+            list.Add(ToolKit.Param("showMainImage", "bool", "Show the main image on the article (detail) view. Default: true when an image is set.", false));
             list.Add(ToolKit.Param("metaDescription", "string", "Meta description.", false));
             list.Add(ToolKit.Param("metaKeywords", "string", "Meta keywords.", false));
             list.Add(ToolKit.Param("titleTag", "string", "HTML <title> override.", false));
@@ -465,7 +466,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 Col("Active", publish),
                 Col("Approved", publish),
                 Col("Published", publish),
-                Col("ShowMainImage", false),
+                Col("ShowMainImage", fields.ShowMainImage ?? image != null),
                 Col("ShowMainImageFront", true),
                 Col("ArticleImageSet", false),
                 Col("TitleTag", fields.TitleTag),
@@ -666,6 +667,16 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 Set("MainImageTitle", fields.ImageTitle, "imageTitle");
             }
 
+            if (fields.ShowMainImage.HasValue)
+            {
+                Set("ShowMainImage", fields.ShowMainImage.Value, "showMainImage");
+            }
+            else if (image != null)
+            {
+                // A new image is meant to be seen; without this the detail view hides it.
+                Set("ShowMainImage", true, "showMainImage");
+            }
+
             if (fields.Featured.HasValue)
             {
                 Set("Featured", fields.Featured.Value, "featured");
@@ -770,6 +781,8 @@ namespace KGroup.EasyDNNNewsMcp.Tools
 
             public string TitleTag { get; set; }
 
+            public bool? ShowMainImage { get; set; }
+
             public bool? Featured { get; set; }
 
             public bool? AllowComments { get; set; }
@@ -786,6 +799,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 MetaDescription = ToolKit.Str(args, "metaDescription"),
                 MetaKeywords = ToolKit.Str(args, "metaKeywords"),
                 TitleTag = ToolKit.Str(args, "titleTag"),
+                ShowMainImage = args.ContainsKey("showMainImage") ? ToolKit.Bool(args, "showMainImage", false) : (bool?)null,
                 Featured = args.ContainsKey("featured") ? ToolKit.Bool(args, "featured", false) : (bool?)null,
                 AllowComments = args.ContainsKey("allowComments") ? ToolKit.Bool(args, "allowComments", false) : (bool?)null,
             };
