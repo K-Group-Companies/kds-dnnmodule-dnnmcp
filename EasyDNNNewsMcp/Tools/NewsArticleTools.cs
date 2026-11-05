@@ -112,7 +112,8 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 Name = "update-news-article",
                 Title = "Update news article",
                 Description =
-                    "Change an EasyDNNNews article. Only the fields passed are changed. "
+                    "Change an EasyDNNNews article. Only the fields passed are changed; pass an empty "
+                    + "string to clear subTitle, summary, authorAlias, imageTitle or the SEO fields. "
                     + "publish true publishes it, false returns it to draft. categories and tags, "
                     + "when passed, replace the article's current ones. Changing slug updates the "
                     + "article's friendly URL.",
@@ -397,7 +398,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return ToolKit.Fail("title and content are required.");
             }
 
-            var fields = ReadFields(args, out var fieldError);
+            var fields = ReadFields(args, false, out var fieldError);
             if (fieldError != null)
             {
                 return ToolKit.Fail(fieldError);
@@ -567,7 +568,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return ToolKit.Fail("You do not have edit rights on news module " + module.ModuleID + ".");
             }
 
-            var fields = ReadFields(args, out var fieldError);
+            var fields = ReadFields(args, true, out var fieldError);
             if (fieldError != null)
             {
                 return ToolKit.Fail(fieldError);
@@ -629,7 +630,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 Set("CleanArticleData", NewsDb.PlainText(content), "content");
             }
 
-            var summary = ToolKit.Str(args, "summary");
+            var summary = Clearable(args, "summary", true);
             if (summary != null)
             {
                 var encoded = NewsDb.Encode(summary);
@@ -805,17 +806,17 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             public bool? AllowComments { get; set; }
         }
 
-        private static ArticleFields ReadFields(Dictionary<string, object> args, out string error)
+        private static ArticleFields ReadFields(Dictionary<string, object> args, bool updating, out string error)
         {
             error = null;
             var fields = new ArticleFields
             {
-                SubTitle = ToolKit.Str(args, "subTitle"),
-                AuthorAlias = ToolKit.Str(args, "authorAlias"),
-                ImageTitle = ToolKit.Str(args, "imageTitle"),
-                MetaDescription = ToolKit.Str(args, "metaDescription"),
-                MetaKeywords = ToolKit.Str(args, "metaKeywords"),
-                TitleTag = ToolKit.Str(args, "titleTag"),
+                SubTitle = Clearable(args, "subTitle", updating),
+                AuthorAlias = Clearable(args, "authorAlias", updating),
+                ImageTitle = Clearable(args, "imageTitle", updating),
+                MetaDescription = Clearable(args, "metaDescription", updating),
+                MetaKeywords = Clearable(args, "metaKeywords", updating),
+                TitleTag = Clearable(args, "titleTag", updating),
                 ShowMainImage = args.ContainsKey("showMainImage") ? ToolKit.Bool(args, "showMainImage", false) : (bool?)null,
                 Featured = args.ContainsKey("featured") ? ToolKit.Bool(args, "featured", false) : (bool?)null,
                 AllowComments = args.ContainsKey("allowComments") ? ToolKit.Bool(args, "allowComments", false) : (bool?)null,
@@ -1117,6 +1118,15 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             return tab == null
                 ? null
                 : tab.FullUrl.TrimEnd('/') + "/ArtMID/" + moduleId.Value + "/ArticleID/" + articleId + "/" + slug;
+        }
+
+        /// <summary>
+        /// <see cref="ToolKit.Str"/>, except that on update a key passed as "" (or null) reads as
+        /// "" so the field is cleared; ToolKit.Str alone treats it as not passed.
+        /// </summary>
+        private static string Clearable(Dictionary<string, object> args, string name, bool updating)
+        {
+            return ToolKit.Str(args, name) ?? (updating && args.ContainsKey(name) ? string.Empty : null);
         }
 
         private static KeyValuePair<string, object> Col(string name, object value)

@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Threading;
 using DotNetNuke.Services.FileSystem;
 
 namespace KGroup.EasyDNNNewsMcp.Tools
@@ -21,13 +22,17 @@ namespace KGroup.EasyDNNNewsMcp.Tools
     /// <c>imageUrl</c> is downloaded by the web server, so it is guarded against SSRF:
     /// http(s) only, every hop's host must resolve to public addresses (redirects are
     /// followed manually so each one is checked), at most 10 MB, and the response must
-    /// be an image. DNS can still change between the check and the connect; the guard
+    /// be an image. The whole download, body included, must finish within 30 seconds.
+    /// The stored extension comes from the file's leading bytes, never from its name or
+    /// Content-Type, so a mislabelled file cannot be saved under an image extension.
+    /// DNS can still change between the check and the connect; the guard
     /// stops casual and accidental internal fetches, not a determined rebinding attack.
     /// </remarks>
     internal static class NewsImages
     {
         private const int MaxBytes = 10 * 1024 * 1024;
         private const int MaxRedirects = 3;
+        private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// WebP is deliberately absent: EasyDNNNews builds its <c>images/</c> thumbnails with
@@ -72,13 +77,21 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             using (var ms = new MemoryStream())
             {
                 stream.CopyTo(ms);
-                if (IsWebp(ms.GetBuffer()))
+                var bytes = ms.ToArray();
+                if (IsWebp(bytes))
                 {
                     error = "imagePath" + WebpError;
                     return null;
                 }
 
-                return new ImageData { FileName = SafeName(file.FileName, file.Extension), Bytes = ms.ToArray(), ContentType = file.ContentType };
+                var ext = SniffExtension(bytes);
+                if (ext == null)
+                {
+                    error = "imagePath is named ." + file.Extension + " but its contents are not a jpg, png or gif image.";
+                    return null;
+                }
+
+                return new ImageData { FileName = SafeName(file.FileName, ext), Bytes = bytes, ContentType = MimeFor(ext) };
             }
         }
 
@@ -92,75 +105,90 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return null;
             }
 
+            // HttpClient.Timeout stops at the headers under ResponseHeadersRead, so one deadline
+            // covers every hop and the body read too.
+            using (var deadline = new CancellationTokenSource(Deadline))
             using (var handler = new HttpClientHandler { AllowAutoRedirect = false })
-            using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) })
+            using (var client = new HttpClient(handler) { Timeout = Deadline })
             {
-                for (var hop = 0; hop <= MaxRedirects; hop++)
+                try
                 {
-                    if (!IsPublicHttp(uri, out error))
+                    return Download(client, uri, deadline.Token, out error);
+                }
+                catch (Exception ex) when (deadline.IsCancellationRequested
+                    && (ex is OperationCanceledException || ex is IOException || ex is ObjectDisposedException || ex is HttpRequestException))
+                {
+                    error = "imageUrl did not finish downloading within " + Deadline.TotalSeconds + " seconds.";
+                    return null;
+                }
+            }
+        }
+
+        private static ImageData Download(HttpClient client, Uri uri, CancellationToken token, out string error)
+        {
+            error = null;
+            for (var hop = 0; hop <= MaxRedirects; hop++)
+            {
+                if (!IsPublicHttp(uri, out error))
+                {
+                    return null;
+                }
+
+                // Disposing the response aborts a body read stuck mid-stream; on .NET
+                // Framework the token alone is only checked between reads.
+                using (var response = client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token).GetAwaiter().GetResult())
+                using (token.Register(response.Dispose))
+                {
+                    var status = (int)response.StatusCode;
+                    if (status >= 300 && status < 400 && response.Headers.Location != null)
                     {
+                        uri = new Uri(uri, response.Headers.Location);
+                        continue;
+                    }
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        error = "imageUrl returned HTTP " + status + ".";
                         return null;
                     }
 
-                    using (var response = client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult())
+                    var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+                    if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
                     {
-                        var status = (int)response.StatusCode;
-                        if (status >= 300 && status < 400 && response.Headers.Location != null)
-                        {
-                            uri = new Uri(uri, response.Headers.Location);
-                            continue;
-                        }
-
-                        if (!response.IsSuccessStatusCode)
-                        {
-                            error = "imageUrl returned HTTP " + status + ".";
-                            return null;
-                        }
-
-                        var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-                        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                        {
-                            error = "imageUrl did not return an image (Content-Type '" + contentType + "').";
-                            return null;
-                        }
-
-                        if (response.Content.Headers.ContentLength > MaxBytes)
-                        {
-                            error = "imageUrl is larger than 10 MB.";
-                            return null;
-                        }
-
-                        var bytes = ReadCapped(response.Content.ReadAsStreamAsync().GetAwaiter().GetResult());
-                        if (bytes == null)
-                        {
-                            error = "imageUrl is larger than 10 MB.";
-                            return null;
-                        }
-
-                        // Checked on the bytes, not the name: CDNs often serve WebP from a
-                        // .jpg URL when the client accepts it.
-                        if (IsWebp(bytes))
-                        {
-                            error = "imageUrl" + WebpError;
-                            return null;
-                        }
-
-                        var name = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
-                        var ext = Path.GetExtension(name).ToLowerInvariant();
-                        if (!Extensions.Contains(ext))
-                        {
-                            ext = ExtensionFor(contentType);
-                            if (ext == null)
-                            {
-                                error = "imageUrl must be a jpg, png or gif image (got '" + contentType + "').";
-                                return null;
-                            }
-
-                            name = Path.GetFileNameWithoutExtension(name) + ext;
-                        }
-
-                        return new ImageData { FileName = SafeName(name, ext.TrimStart('.')), Bytes = bytes, ContentType = contentType };
+                        error = "imageUrl did not return an image (Content-Type '" + contentType + "').";
+                        return null;
                     }
+
+                    if (response.Content.Headers.ContentLength > MaxBytes)
+                    {
+                        error = "imageUrl is larger than 10 MB.";
+                        return null;
+                    }
+
+                    var bytes = ReadCapped(response.Content.ReadAsStreamAsync().GetAwaiter().GetResult(), token);
+                    if (bytes == null)
+                    {
+                        error = "imageUrl is larger than 10 MB.";
+                        return null;
+                    }
+
+                    // Checked on the bytes, not the name: CDNs often serve WebP from a
+                    // .jpg URL when the client accepts it.
+                    if (IsWebp(bytes))
+                    {
+                        error = "imageUrl" + WebpError;
+                        return null;
+                    }
+
+                    var ext = SniffExtension(bytes);
+                    if (ext == null)
+                    {
+                        error = "imageUrl must be a jpg, png or gif image; its contents are none of those (Content-Type '" + contentType + "').";
+                        return null;
+                    }
+
+                    var name = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
+                    return new ImageData { FileName = SafeName(name, ext), Bytes = bytes, ContentType = MimeFor(ext) };
                 }
             }
 
@@ -245,14 +273,14 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 || (b[0] == 100 && b[1] >= 64 && b[1] <= 127);
         }
 
-        private static byte[] ReadCapped(Stream stream)
+        private static byte[] ReadCapped(Stream stream, CancellationToken token)
         {
             using (stream)
             using (var ms = new MemoryStream())
             {
                 var buffer = new byte[81920];
                 int read;
-                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                while ((read = stream.ReadAsync(buffer, 0, buffer.Length, token).GetAwaiter().GetResult()) > 0)
                 {
                     if (ms.Length + read > MaxBytes)
                     {
@@ -274,20 +302,33 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
         }
 
-        private static string ExtensionFor(string contentType)
+        /// <summary>
+        /// The extension the file's signature says it is: JPEG <c>FF D8 FF</c>, PNG
+        /// <c>89 50 4E 47</c>, GIF <c>GIF8</c>. Null for anything else.
+        /// </summary>
+        private static string SniffExtension(byte[] b)
         {
-            switch (contentType.ToLowerInvariant())
+            if (b == null || b.Length < 4)
             {
-                case "image/jpeg":
-                case "image/jpg":
-                    return ".jpg";
-                case "image/png":
-                    return ".png";
-                case "image/gif":
-                    return ".gif";
-                default:
-                    return null;
+                return null;
             }
+
+            if (b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF)
+            {
+                return "jpg";
+            }
+
+            if (b[0] == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G')
+            {
+                return "png";
+            }
+
+            return b[0] == 'G' && b[1] == 'I' && b[2] == 'F' && b[3] == '8' ? "gif" : null;
+        }
+
+        private static string MimeFor(string ext)
+        {
+            return ext == "jpg" ? "image/jpeg" : "image/" + ext;
         }
 
         private static string SafeName(string fileName, string extension)
