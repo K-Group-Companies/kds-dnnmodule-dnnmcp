@@ -10,6 +10,7 @@ using Dnn.Mcp.WebApi.Services;
 using DotNetNuke.Common.Utilities;
 using DotNetNuke.Entities.Modules;
 using DotNetNuke.Entities.Portals;
+using DotNetNuke.Entities.Tabs;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Satrabel.AIChat.Tools;
@@ -91,6 +92,8 @@ namespace KGroup.LiveFormsMcp.Tools
                     ToolKit.Param("intro", "string", "HTML shown above the fields.", false),
                     ToolKit.Param("subject", "string", "Notification subject. Default 'New <module title> submission'.", false),
                     ToolKit.Param("fromEmail", "string", "Sender address. Default the portal's email address.", false),
+                    ToolKit.Param("emailContext", "string", "Sentence added after the opening line of the notification, e.g. 'They expressed interest in the managed IT case study.'", false),
+                    ToolKit.Param("submissionType", "string", "Submission Type line of the notification. Default 'New inbound inquiry'.", false),
                     ToolKit.Param("thankYouMessage", "string", "HTML shown after submitting. Ignored when redirectUrl is set.", false),
                     ToolKit.Param("redirectUrl", "string", "Redirect here after submitting instead of showing a message.", false),
                     ToolKit.Param("confirmationMessage", "string", "HTML emailed to the submitter. Needs an email field. Omit for no confirmation.", false),
@@ -298,7 +301,7 @@ namespace KGroup.LiveFormsMcp.Tools
                     from,
                     emailToken,
                     ToolKit.Str(args, "subject") ?? "New " + (module.ModuleTitle ?? "form") + " submission",
-                    SummaryBody(module.ModuleTitle, inputs)),
+                    SummaryBody(module.ModuleTitle, inputs, settings, module, ToolKit.Str(args, "emailContext"), ToolKit.Str(args, "submissionType"))),
             };
 
             if (confirmation != null)
@@ -633,21 +636,70 @@ namespace KGroup.LiveFormsMcp.Tools
             return captcha;
         }
 
-        private static string SummaryBody(string title, IEnumerable<JObject> inputs)
+        /// <summary>
+        /// The notification body: a prose sentence naming the submitter, the field values as
+        /// "Label: value" lines, then a source block (site, form, page link, submission type
+        /// and ID). Mail filters score a bare table of tokens as spam far more often than
+        /// this shape, which reads like a written message.
+        /// </summary>
+        private static string SummaryBody(string title, IEnumerable<JObject> inputs, PortalSettings settings, ModuleInfo module, string context, string submissionType)
         {
+            var list = inputs.ToList();
+            string Token(JObject f) => f == null ? null : "[" + f["GUID"] + "]";
+            string Label(JObject f) => WebUtility.HtmlEncode((string)f["Label"]?["Text"] ?? (string)f["UniqueToken"]);
+            JObject Find(params string[] names) => list.FirstOrDefault(f => names.Any(n =>
+                string.Equals(Normalize((string)f["UniqueToken"]), n, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Normalize((string)f["Label"]?["Text"]), n, StringComparison.OrdinalIgnoreCase)));
+
+            var full = Find("name", "fullname", "yourname");
+            var first = Find("firstname", "first");
+            var last = Find("lastname", "last", "surname");
+            var name = full != null ? Token(full)
+                : first != null ? Token(first) + (last != null ? " " + Token(last) : string.Empty)
+                : null;
+            var email = Token(list.FirstOrDefault(f => (string)f["Type"] == "Email"));
+
+            var formName = WebUtility.HtmlEncode(title ?? "website");
             var sb = new StringBuilder();
-            sb.Append("<table style=\"width: 95%;margin:5px;\"><tbody>");
-            sb.Append("<tr><td colspan=\"2\"><strong>").Append(WebUtility.HtmlEncode(title ?? "Form")).Append(" submission</strong></td></tr>");
-            foreach (var f in inputs)
+            sb.Append("<table style=\"width: 95%;margin:5px;\"><tbody><tr><td colspan=\"2\"><p>The following ")
+                .Append(formName).Append("&nbsp;form was submitted at&nbsp;[DateTime:Now]");
+            if (name != null)
             {
-                sb.Append("<tr><td width=\"35%\">")
-                    .Append(WebUtility.HtmlEncode((string)f["Label"]?["Text"] ?? (string)f["UniqueToken"]))
-                    .Append(":</td><td>[").Append((string)f["GUID"]).Append("]</td></tr>");
+                sb.Append("&nbsp;by ").Append(name);
             }
 
-            sb.Append("</tbody></table>");
+            if (email != null)
+            {
+                sb.Append(name != null ? " they" : ". They").Append(" can be reached at ").Append(email);
+            }
+
+            sb.Append('.');
+            if (!string.IsNullOrWhiteSpace(context))
+            {
+                sb.Append(' ').Append(WebUtility.HtmlEncode(context.Trim()));
+            }
+
+            sb.Append("</p><p><strong>Contact Information</strong></p>");
+            sb.Append(string.Join("<br />", list.Select(f => Label(f) + ": " + Token(f))));
+            sb.Append("</td></tr><tr><td width=\"35%\"> </td><td> </td></tr></tbody></table><hr />");
+
+            var tab = TabController.Instance.GetTab(module.TabID, settings.PortalId, false);
+            sb.Append("<p><strong>Source:</strong>&nbsp;").Append(WebUtility.HtmlEncode(settings.PortalName))
+                .Append("&nbsp;website ").Append(formName).Append(" form");
+            if (tab != null)
+            {
+                var pageName = string.IsNullOrWhiteSpace(tab.Title) ? tab.TabName : tab.Title;
+                sb.Append("&nbsp;<a href=\"").Append(WebUtility.HtmlEncode(tab.FullUrl)).Append("\">")
+                    .Append(WebUtility.HtmlEncode(pageName)).Append("</a>");
+            }
+
+            sb.Append(".<br /><strong>Submission Type:</strong> ").Append(WebUtility.HtmlEncode(submissionType ?? "New inbound inquiry"))
+                .Append("<br /><strong>Submission ID:</strong>&nbsp;[SubmissionID]&nbsp;</p>");
 
             return sb.ToString();
         }
+
+        private static string Normalize(string s) =>
+            s == null ? null : new string(s.Where(char.IsLetterOrDigit).ToArray());
     }
 }
