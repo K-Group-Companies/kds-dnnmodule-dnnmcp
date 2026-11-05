@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using DotNetNuke.Common.Utilities;
 using DotNetNuke.Data;
 using DotNetNuke.Entities.Modules;
 using Newtonsoft.Json.Linq;
@@ -32,6 +33,17 @@ namespace KGroup.EasyDNNNewsMcp.Tools
     {
         /// <summary>Desktop module name of the EasyDNNNews article module.</summary>
         public const string NewsDefinitionName = "EasyDNNNews";
+
+        /// <summary>
+        /// EasyDNNNews caches module settings and category links in the DNN cache, so a direct
+        /// table write is not seen until that entry goes. Its cache keys are internal to the
+        /// vendor assembly, so the whole DNN cache is cleared; this is a one-off admin action,
+        /// not a page hot path.
+        /// </summary>
+        public static void ClearModuleCache()
+        {
+            DataCache.ClearCache();
+        }
 
         public static string Sql(string sql)
         {

@@ -5,7 +5,6 @@ using System.Linq;
 using Dnn.Mcp.WebApi;
 using Dnn.Mcp.WebApi.Models;
 using Dnn.Mcp.WebApi.Services;
-using DotNetNuke.Common.Utilities;
 using DotNetNuke.Data;
 using DotNetNuke.Entities.Portals;
 using Newtonsoft.Json;
@@ -356,7 +355,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             values.AddRange(updates.Select(u => u.Value));
             NewsDb.Exec(sql, values.ToArray());
 
-            ClearCaches();
+            NewsDb.ClearModuleCache();
             var after = ReadRow(SettingsTable, module.ModuleID, updates.Select(u => u.Key));
 
             var changes = updates.Select(u => new
@@ -430,7 +429,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return 0;
             });
 
-            ClearCaches();
+            NewsDb.ClearModuleCache();
 
             var idSettings = IdColumns
                 // 0 and -1 both mean "not set" in EasyDNN, so only real IDs are worth a warning.
@@ -520,16 +519,6 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             }
 
             return sourceKeys.Count;
-        }
-
-        /// <summary>
-        /// EasyDNNNews caches module settings in the DNN cache, so a direct table write is not
-        /// seen until that entry goes. Its cache keys are internal to the vendor assembly, so
-        /// the whole DNN cache is cleared; this is a one-off admin action, not a page hot path.
-        /// </summary>
-        private static void ClearCaches()
-        {
-            DataCache.ClearCache();
         }
 
         private static JObject ToJObject(object raw)

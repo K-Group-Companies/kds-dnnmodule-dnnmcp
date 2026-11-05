@@ -249,6 +249,12 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return id;
             });
 
+            if (targetModules.Count > 0)
+            {
+                // Otherwise the modules keep listing their cached category set.
+                NewsDb.ClearModuleCache();
+            }
+
             return ToolKit.Ok(
                 (created ? "Created" : "Category already existed:") + " category " + categoryId + " '" + name + "'"
                 + (parent == null ? string.Empty : " under " + parent.CategoryID + " '" + parent.CategoryName + "'")
