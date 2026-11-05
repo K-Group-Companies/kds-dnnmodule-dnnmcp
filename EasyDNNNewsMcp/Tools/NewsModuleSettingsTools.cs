@@ -530,7 +530,9 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 case JObject j:
                     return j;
                 case string s:
-                    return string.IsNullOrWhiteSpace(s) ? null : JObject.Parse(s);
+                    // DateParseHandling.None keeps ISO date strings as strings; the default turns
+                    // them into Date tokens, whose JSON text TryConvert could not parse back.
+                    return string.IsNullOrWhiteSpace(s) ? null : JsonConvert.DeserializeObject<JObject>(s, new JsonSerializerSettings { DateParseHandling = DateParseHandling.None });
                 default:
                     return JObject.FromObject(raw);
             }
@@ -552,7 +554,10 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return false;
             }
 
-            var text = token.Type == JTokenType.String ? (string)token : token.ToString(Formatting.None);
+            // A JObject passed in directly may still hold Date tokens; their JSON form is a quoted ISO string.
+            var text = token.Type == JTokenType.String ? (string)token
+                : token.Type == JTokenType.Date ? token.ToString(Formatting.None).Trim('"')
+                : token.ToString(Formatting.None);
             switch (column.TypeName)
             {
                 case "bit":
