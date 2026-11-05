@@ -9,6 +9,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
         {
             services.AddTransient<IMcpProvider, NewsCategoryTools>();
             services.AddTransient<IMcpProvider, NewsArticleTools>();
+            services.AddTransient<IMcpProvider, NewsModuleSettingsTools>();
         }
     }
 }

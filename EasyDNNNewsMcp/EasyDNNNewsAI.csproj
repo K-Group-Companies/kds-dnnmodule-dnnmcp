@@ -72,6 +72,7 @@
     <Compile Include="Tools\NewsImages.cs" />
     <Compile Include="Tools\NewsCategoryTools.cs" />
     <Compile Include="Tools\NewsArticleTools.cs" />
+    <Compile Include="Tools\NewsModuleSettingsTools.cs" />
     <Compile Include="Tools\ToolsExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
