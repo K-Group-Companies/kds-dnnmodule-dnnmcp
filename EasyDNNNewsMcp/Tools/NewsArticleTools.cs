@@ -753,6 +753,13 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 return 0;
             });
 
+            if (changed.Contains("slug"))
+            {
+                // The module's URL provider caches slug-to-article lookups in the DNN cache, so
+                // without this the new slug 301s to the old one until the app pool recycles.
+                NewsDb.ClearModuleCache();
+            }
+
             var imageNote = SaveImage(portalId, articleId, image);
             if (image != null && imageNote.Length == 0)
             {
