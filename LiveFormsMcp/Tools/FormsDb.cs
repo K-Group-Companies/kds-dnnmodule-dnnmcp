@@ -67,6 +67,11 @@ namespace KGroup.LiveFormsMcp.Tools
             }
         }
 
+        public static T Scalar<T>(IDataContext ctx, string sql, params object[] args)
+        {
+            return ctx.ExecuteScalar<T>(CommandType.Text, Sql(sql), args);
+        }
+
         public static void Exec(IDataContext ctx, string sql, params object[] args)
         {
             ctx.Execute(CommandType.Text, Sql(sql), args);
@@ -290,11 +295,23 @@ namespace KGroup.LiveFormsMcp.Tools
             return string.IsNullOrEmpty(text) ? text : EmailPattern.Replace(text, "$1***@$2");
         }
 
+        /// <summary>
+        /// One address in the same character set <see cref="EmailPattern"/> masks, so every
+        /// address accepted here is also masked when echoed back.
+        /// </summary>
+        private static readonly Regex SingleEmail = new Regex(
+            @"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
+            RegexOptions.Compiled);
+
+        /// <summary>True for one or more addresses separated by , or ; (";" alone is not a list).</summary>
         public static bool LooksLikeEmailList(string text)
         {
-            return !string.IsNullOrWhiteSpace(text) && text
+            var addresses = (text ?? string.Empty)
                 .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .All(s => Regex.IsMatch(s.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"));
+                .Select(a => a.Trim())
+                .Where(a => a.Length > 0)
+                .ToList();
+            return addresses.Count > 0 && addresses.All(SingleEmail.IsMatch);
         }
 
         /// <summary>

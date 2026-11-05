@@ -136,7 +136,8 @@ namespace KGroup.LiveFormsMcp.Tools
                 return ToolKit.Fail("Module " + sourceId + " has no form to copy.");
             }
 
-            var blocked = CheckTarget(targetId, ToolKit.Bool(args, "overwrite", false));
+            var overwrite = ToolKit.Bool(args, "overwrite", false);
+            var blocked = CheckTarget(targetId, overwrite, out var definitionSeen);
             if (blocked != null)
             {
                 return ToolKit.Fail(blocked);
@@ -156,7 +157,7 @@ namespace KGroup.LiveFormsMcp.Tools
             }
 
             var settings = FormsDb.LoadSettings(sourceId);
-            FormsDb.InTransaction(ctx =>
+            blocked = SaveLocked(targetId, overwrite, definitionSeen, ctx =>
             {
                 Save(ctx, targetId, source.FormDefinition, actions, source.Localization);
                 FormsDb.Exec(ctx, "DELETE FROM {databaseOwner}[{objectQualifier}LiveForms_Setting] WHERE ModuleID = @0", targetId);
@@ -171,6 +172,11 @@ namespace KGroup.LiveFormsMcp.Tools
                         s.Value ?? string.Empty);
                 }
             });
+            if (blocked != null)
+            {
+                return ToolKit.Fail(blocked);
+            }
+
             ClearCache(target);
 
             return ToolKit.Ok(
@@ -207,7 +213,8 @@ namespace KGroup.LiveFormsMcp.Tools
                 return ToolKit.Fail("fromEmail must be one address (the portal has none set, so pass fromEmail).");
             }
 
-            var blocked = CheckTarget(moduleId, ToolKit.Bool(args, "overwrite", false));
+            var overwrite = ToolKit.Bool(args, "overwrite", false);
+            var blocked = CheckTarget(moduleId, overwrite, out var definitionSeen);
             if (blocked != null)
             {
                 return ToolKit.Fail(blocked);
@@ -227,7 +234,7 @@ namespace KGroup.LiveFormsMcp.Tools
             var intro = ToolKit.Str(args, "intro");
             if (intro != null)
             {
-                fields.Add(HtmlField(intro, 12));
+                fields.Add(HtmlField(intro, 12, null));
             }
 
             foreach (var spec in specs)
@@ -241,6 +248,11 @@ namespace KGroup.LiveFormsMcp.Tools
                 if (field == null)
                 {
                     return ToolKit.Fail(error);
+                }
+
+                if (field["UniqueToken"].Type == JTokenType.Null)
+                {
+                    field["UniqueToken"] = NextHtmlToken(fields);
                 }
 
                 if (fields.OfType<JObject>().Any(f => f["UniqueToken"] != null && string.Equals((string)f["UniqueToken"], (string)field["UniqueToken"], StringComparison.OrdinalIgnoreCase)))
@@ -326,7 +338,12 @@ namespace KGroup.LiveFormsMcp.Tools
                 ["Style"] = JObject.Parse(DefaultStyle),
             };
 
-            FormsDb.InTransaction(ctx => Save(ctx, moduleId, definition.ToString(Formatting.None), ActionsXml.Build(actions), null));
+            blocked = SaveLocked(moduleId, overwrite, definitionSeen, ctx => Save(ctx, moduleId, definition.ToString(Formatting.None), ActionsXml.Build(actions), null));
+            if (blocked != null)
+            {
+                return ToolKit.Fail(blocked);
+            }
+
             ClearCache(module);
 
             return ToolKit.Ok(
@@ -337,8 +354,14 @@ namespace KGroup.LiveFormsMcp.Tools
         }
 
         /// <summary>Returns why the target cannot be written, or null when it can.</summary>
-        private static string CheckTarget(int moduleId, bool overwrite)
+        /// <remarks>
+        /// This runs before the save for an early, friendly answer; <see cref="SaveLocked"/>
+        /// checks again inside the transaction. <paramref name="definitionSeen"/> is the
+        /// target's form as read here, for that second check.
+        /// </remarks>
+        private static string CheckTarget(int moduleId, bool overwrite, out string definitionSeen)
         {
+            definitionSeen = null;
             var submissions = FormsDb.SubmissionStats(new[] { moduleId });
             if (submissions.TryGetValue(moduleId, out var s) && s.Total > 0)
             {
@@ -346,12 +369,82 @@ namespace KGroup.LiveFormsMcp.Tools
             }
 
             var existing = FormsDb.LoadForm(moduleId);
+            definitionSeen = existing?.FormDefinition;
             if (!overwrite && existing != null && FormsDb.InputFields(FormsDb.Fields(existing.FormDefinition)).Any())
             {
                 return "Module " + moduleId + " already has a form. Pass overwrite=true to replace it.";
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Runs <paramref name="save"/> in a transaction after re-checking the target, and
+        /// returns why it refused, or null once saved.
+        /// </summary>
+        /// <remarks>
+        /// <c>UPDLOCK, HOLDLOCK</c> keeps range locks on the target's submission and form rows
+        /// until commit, so a submission or another write arriving after
+        /// <see cref="CheckTarget"/> either lands first and is seen here, or waits for this
+        /// save to finish. The lock is held only for the few statements of the save.
+        /// </remarks>
+        private static string SaveLocked(int moduleId, bool overwrite, string definitionSeen, Action<DotNetNuke.Data.IDataContext> save)
+        {
+            try
+            {
+                FormsDb.InTransaction(ctx =>
+                {
+                    var submissions = FormsDb.Scalar<int>(
+                        ctx,
+                        "SELECT COUNT(*) FROM {databaseOwner}[{objectQualifier}LiveForms_Submission] WITH (UPDLOCK, HOLDLOCK) WHERE ModuleID = @0",
+                        moduleId);
+                    if (submissions > 0)
+                    {
+                        throw new TargetChanged("Module " + moduleId + " received a submission while the form was being written, so nothing was changed. Add a new Live Forms module instead.");
+                    }
+
+                    var definition = FormsDb.Scalar<string>(
+                        ctx,
+                        "SELECT FormDefinition FROM {databaseOwner}[{objectQualifier}LiveForms] WITH (UPDLOCK, HOLDLOCK) WHERE ModuleId = @0",
+                        moduleId);
+                    if (!overwrite && definition != definitionSeen)
+                    {
+                        throw new TargetChanged("Module " + moduleId + "'s form was changed by someone else while this one was being written, so nothing was changed. Check it, then pass overwrite=true to replace it.");
+                    }
+
+                    save(ctx);
+                });
+            }
+            catch (TargetChanged ex)
+            {
+                return ex.Message;
+            }
+
+            return null;
+        }
+
+        /// <summary>The first of HTML, HTML2, HTML3... not yet used as a token in <paramref name="fields"/>.</summary>
+        private static string NextHtmlToken(JArray fields)
+        {
+            var used = new HashSet<string>(
+                fields.OfType<JObject>().Select(f => (string)f["UniqueToken"]).Where(t => t != null),
+                StringComparer.OrdinalIgnoreCase);
+            var token = "HTML";
+            for (var n = 2; used.Contains(token); n++)
+            {
+                token = "HTML" + n;
+            }
+
+            return token;
+        }
+
+        /// <summary>Aborts <see cref="SaveLocked"/>'s transaction with a message for the caller.</summary>
+        private sealed class TargetChanged : Exception
+        {
+            public TargetChanged(string message)
+                : base(message)
+            {
+            }
         }
 
         private static void Save(DotNetNuke.Data.IDataContext ctx, int moduleId, string definition, string actions, string localization)
@@ -406,7 +499,12 @@ namespace KGroup.LiveFormsMcp.Tools
             };
         }
 
-        private static JObject HtmlField(string html, int width)
+        /// <summary>
+        /// An HTML block. A null <paramref name="token"/> is filled in by the caller with the
+        /// next free HTML/HTML2/... token; the vendor keys fields by token, so two blocks
+        /// sharing "HTML" collide.
+        /// </summary>
+        private static JObject HtmlField(string html, int width, string token)
         {
             return new JObject
             {
@@ -416,7 +514,7 @@ namespace KGroup.LiveFormsMcp.Tools
                 ["GUID"] = NewGuid(),
                 ["Hide"] = false,
                 ["Html"] = html,
-                ["UniqueToken"] = "HTML",
+                ["UniqueToken"] = token,
                 ["Class"] = string.Empty,
                 ["ColSpan"] = width,
             };
@@ -453,7 +551,7 @@ namespace KGroup.LiveFormsMcp.Tools
                     return null;
                 }
 
-                return HtmlField(html, width);
+                return HtmlField(html, width, string.IsNullOrWhiteSpace((string)spec["token"]) ? null : ((string)spec["token"]).Trim());
             }
 
             if (string.IsNullOrEmpty(label))
