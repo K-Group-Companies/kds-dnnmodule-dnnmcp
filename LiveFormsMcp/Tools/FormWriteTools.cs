@@ -234,7 +234,7 @@ namespace KGroup.LiveFormsMcp.Tools
             var intro = ToolKit.Str(args, "intro");
             if (intro != null)
             {
-                fields.Add(HtmlField(intro, 12, null));
+                fields.Add(HtmlField(intro, 12, NextHtmlToken(fields)));
             }
 
             foreach (var spec in specs)
@@ -250,7 +250,7 @@ namespace KGroup.LiveFormsMcp.Tools
                     return ToolKit.Fail(error);
                 }
 
-                if (field["UniqueToken"].Type == JTokenType.Null)
+                if ((string)field["UniqueToken"] == null)
                 {
                     field["UniqueToken"] = NextHtmlToken(fields);
                 }
