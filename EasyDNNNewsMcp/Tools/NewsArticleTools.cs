@@ -64,7 +64,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 {
                     ToolKit.Param("moduleId", "int", "Only articles shown by this news module.", false),
                     ToolKit.Param("categoryId", "int", "Only articles in this category.", false),
-                    ToolKit.Param("status", "string", "Filter by status. Default all.", false, new[] { "all", "published", "draft" }),
+                    ToolKit.Param("status", "string", "Filter by status. scheduled is published with a future publishDate. Default all.", false, new[] { "all", "published", "scheduled", "draft" }),
                     ToolKit.Param("search", "string", "Text to find in the title or article text.", false),
                     ToolKit.Param("page", "int", "1-based page number. Default 1.", false),
                     ToolKit.Param("pageSize", "int", "Articles per page, 1-100. Default 20.", false),
@@ -264,7 +264,12 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             var status = (ToolKit.Str(args, "status") ?? "all").ToLowerInvariant();
             if (status == "published")
             {
-                where.Add("a.Active = 1 AND a.Approved = 1");
+                // PublishDate is stored in UTC (see Status), so future-dated posts are "scheduled".
+                where.Add("a.Active = 1 AND a.Approved = 1 AND a.PublishDate <= GETUTCDATE()");
+            }
+            else if (status == "scheduled")
+            {
+                where.Add("a.Active = 1 AND a.Approved = 1 AND a.PublishDate > GETUTCDATE()");
             }
             else if (status == "draft")
             {
@@ -272,7 +277,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             }
             else if (status != "all")
             {
-                return ToolKit.Fail("status must be all, published or draft.");
+                return ToolKit.Fail("status must be all, published, scheduled or draft.");
             }
 
             var search = ToolKit.Str(args, "search");
@@ -292,10 +297,15 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 + " ORDER BY a.PublishDate DESC, a.ArticleID DESC OFFSET " + ((page - 1) * pageSize) + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY",
                 sqlArgs.ToArray());
 
+            // COUNT(*) OVER () rides on the page's rows, so a page past the end needs its own count.
+            var total = rows.Count > 0 ? rows[0].Total
+                : page == 1 ? 0
+                : NewsDb.Scalar<int>("SELECT COUNT(*) FROM {databaseOwner}[{objectQualifier}EasyDNNNews] a WHERE " + string.Join(" AND ", where), sqlArgs.ToArray());
+
             var categories = ArticleCategories(rows.Select(r => r.ArticleID).ToList());
             var result = new
             {
-                total = rows.Count == 0 ? 0 : rows[0].Total,
+                total,
                 page,
                 pageSize,
                 articles = rows.Select(r => new
