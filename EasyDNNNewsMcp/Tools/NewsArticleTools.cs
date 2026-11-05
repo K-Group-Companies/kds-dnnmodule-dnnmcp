@@ -145,7 +145,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             list.Add(ToolKit.Param("categories", "array", "Category names or IDs." + (adding ? " Default: the module's single category, if it has exactly one." : string.Empty), false));
             list.Add(ToolKit.Param("tags", "array", "Tag names. Missing tags are created.", false));
             list.Add(ToolKit.Param("imagePath", "string", "Main image: portal-relative path of an existing file, e.g. Images/blog/hero.jpg.", false));
-            list.Add(ToolKit.Param("imageUrl", "string", "Main image: public http(s) URL to download (jpg, png, gif, webp, 10 MB max).", false));
+            list.Add(ToolKit.Param("imageUrl", "string", "Main image: public http(s) URL to download (jpg, png or gif, 10 MB max; WebP is refused because the module cannot thumbnail it).", false));
             list.Add(ToolKit.Param("imageTitle", "string", "Main image title / alt text.", false));
             list.Add(ToolKit.Param("showMainImage", "bool", "Show the main image on the article (detail) view. Default: true when an image is set.", false));
             list.Add(ToolKit.Param("metaDescription", "string", "Meta description.", false));

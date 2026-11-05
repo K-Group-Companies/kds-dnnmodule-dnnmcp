@@ -29,7 +29,16 @@ namespace KGroup.EasyDNNNewsMcp.Tools
         private const int MaxBytes = 10 * 1024 * 1024;
         private const int MaxRedirects = 3;
 
-        private static readonly string[] Extensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        /// <summary>
+        /// WebP is deliberately absent: EasyDNNNews builds its <c>images/</c> thumbnails with
+        /// GDI+ (System.Drawing), which cannot decode WebP. It fails silently, so a WebP main
+        /// image saves fine but every list and detail thumbnail 404s. Its EnableWebpImages
+        /// setting only re-encodes output and does not change that.
+        /// </summary>
+        private static readonly string[] Extensions = { ".jpg", ".jpeg", ".png", ".gif" };
+
+        private const string WebpError =
+            " is a WebP image, which EasyDNNNews cannot make thumbnails from. Convert it to jpg or png first.";
 
         internal class ImageData
         {
@@ -53,7 +62,9 @@ namespace KGroup.EasyDNNNewsMcp.Tools
 
             if (!Extensions.Contains("." + (file.Extension ?? string.Empty).ToLowerInvariant()))
             {
-                error = "imagePath must be a jpg, jpeg, png, gif or webp file.";
+                error = string.Equals(file.Extension, "webp", StringComparison.OrdinalIgnoreCase)
+                    ? "imagePath" + WebpError
+                    : "imagePath must be a jpg, jpeg, png or gif file.";
                 return null;
             }
 
@@ -61,6 +72,12 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             using (var ms = new MemoryStream())
             {
                 stream.CopyTo(ms);
+                if (IsWebp(ms.GetBuffer()))
+                {
+                    error = "imagePath" + WebpError;
+                    return null;
+                }
+
                 return new ImageData { FileName = SafeName(file.FileName, file.Extension), Bytes = ms.ToArray(), ContentType = file.ContentType };
             }
         }
@@ -120,6 +137,14 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                             return null;
                         }
 
+                        // Checked on the bytes, not the name: CDNs often serve WebP from a
+                        // .jpg URL when the client accepts it.
+                        if (IsWebp(bytes))
+                        {
+                            error = "imageUrl" + WebpError;
+                            return null;
+                        }
+
                         var name = Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath));
                         var ext = Path.GetExtension(name).ToLowerInvariant();
                         if (!Extensions.Contains(ext))
@@ -127,7 +152,7 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                             ext = ExtensionFor(contentType);
                             if (ext == null)
                             {
-                                error = "imageUrl must be a jpg, png, gif or webp image (got '" + contentType + "').";
+                                error = "imageUrl must be a jpg, png or gif image (got '" + contentType + "').";
                                 return null;
                             }
 
@@ -241,6 +266,14 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             }
         }
 
+        /// <summary>A WebP file starts "RIFF", a 4-byte size, then "WEBP".</summary>
+        private static bool IsWebp(byte[] bytes)
+        {
+            return bytes != null && bytes.Length >= 12
+                && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
+        }
+
         private static string ExtensionFor(string contentType)
         {
             switch (contentType.ToLowerInvariant())
@@ -252,8 +285,6 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                     return ".png";
                 case "image/gif":
                     return ".gif";
-                case "image/webp":
-                    return ".webp";
                 default:
                     return null;
             }
