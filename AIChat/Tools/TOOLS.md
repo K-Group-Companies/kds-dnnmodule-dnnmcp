@@ -621,3 +621,99 @@ These tools fetch and analyze content from external URLs.
 - Uses portal host email and settings to send mail.
 - Returns JSON with `success` flag and an optional error or success message.
 
+---
+
+## Cookie Consent tools
+
+Installed by the CookieConsentMcp package (`KGroup.CookieConsentAI`). They manage EasyDNN Cookie Consent 3.x on the current portal and require a portal administrator or host. Enable them per portal like any other tool.
+
+Setting names are the camelCase names the vendor's own JSON export uses (`googleTagManagerContainerId`, `complianceMode`, ...). Tracking IDs (GTM, GA4, AdSense) are always masked in output, the encrypted OpenAI key is reported only as set or not set, and the consent log is reported as counts.
+
+Typical new-site flow: `export-cookie-consent` on a configured site → `place-cookie-consent` on the new site → load any page → `import-cookie-consent` → `set-cookie-consent` for the site's own GTM ID → `get-cookie-consent` to check for warnings.
+
+### `get-cookie-consent`
+
+- **Title**: Get Cookie Consent  
+- **Description**: Show the portal's settings, categories, cookie catalog and rule counts, module placement, consent log counts and setup warnings.  
+- **ReadOnly**: true
+
+**Parameters**
+
+| Name     | Type    | Required | Description                                          |
+|----------|---------|----------|------------------------------------------------------|
+| `detail` | boolean | no       | Also list every cookie catalog entry and cookie rule. |
+
+**Notes**
+- Warns when the module is missing, duplicated, not on all pages or showing its container; when DNN's Google Tag Manager connector is set (it loads GTM on every page before consent); when a tag is on without its ID; when GA4 is loaded both directly and through GTM; when consent debug is on; and when no policy page is set.
+
+---
+
+### `export-cookie-consent`
+
+- **Title**: Export Cookie Consent  
+- **Description**: Export the configuration as JSON for `import-cookie-consent` on another site.  
+- **ReadOnly**: true
+
+**Parameters**: none.
+
+**Notes**
+- Leaves out site-specific values: tracking IDs, policy URL and policy page IDs. Policy pages are exported by page name.
+- Consent debug is always exported off. Managed scripts are not exported.
+
+---
+
+### `place-cookie-consent`
+
+- **Title**: Place Cookie Consent  
+- **Description**: Put the Cookie Consent module on every page with its container hidden.  
+- **ReadOnly**: false
+
+**Parameters**
+
+| Name       | Type   | Required | Description                                                         |
+|------------|--------|----------|---------------------------------------------------------------------|
+| `tabId`    | int    | no       | Page for a new module when there is none. Defaults to the home page. |
+| `paneName` | string | no       | Pane for a new module. Defaults to `ContentPane`.                    |
+
+**Notes**
+- Reuses the first existing Cookie Consent module and reports any others, which should be deleted.
+- The module creates its settings row on its first render, so load a page before importing or setting values.
+
+---
+
+### `import-cookie-consent`
+
+- **Title**: Import Cookie Consent  
+- **Description**: Apply an exported configuration: settings, categories, cookie catalog and cookie rules.  
+- **ReadOnly**: false
+
+**Parameters**
+
+| Name                 | Type   | Required | Description                                                   |
+|----------------------|--------|----------|---------------------------------------------------------------|
+| `config`             | object | yes      | The exported configuration, as a JSON object or string.       |
+| `privacyPolicyTabId` | int    | no       | Privacy policy page on this site. Overrides the exported name. |
+| `cookiePolicyTabId`  | int    | no       | Cookie policy page on this site. Overrides the exported name.  |
+
+**Notes**
+- Rows are added or updated, never deleted. Natural keys: category `categoryKey`, catalog `cookieName`, rule `cookieName` + `matchType`.
+- Site-specific values are never copied; a tag is switched off when this site has no ID for it yet. Consent debug is forced off.
+- Everything is validated first and written in one transaction; on any error nothing is changed.
+
+---
+
+### `set-cookie-consent`
+
+- **Title**: Set Cookie Consent  
+- **Description**: Change individual settings, e.g. `{"googleTagManagerEnabled": true, "googleTagManagerContainerId": "GTM-XXXXXXX"}`.  
+- **ReadOnly**: false
+
+**Parameters**
+
+| Name       | Type   | Required | Description                     |
+|------------|--------|----------|---------------------------------|
+| `settings` | object | yes      | Setting names and new values.   |
+
+**Notes**
+- Values are checked against the vendor's allowed lists, ranges and ID formats. A change is refused if it would enable a tag without its ID or load GA4 both directly and through GTM; on any error nothing is changed.
+
