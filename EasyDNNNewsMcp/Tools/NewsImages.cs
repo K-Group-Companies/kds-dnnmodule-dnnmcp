@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
+using DotNetNuke.Security.Permissions;
 using DotNetNuke.Services.FileSystem;
 
 namespace KGroup.EasyDNNNewsMcp.Tools
@@ -18,6 +19,8 @@ namespace KGroup.EasyDNNNewsMcp.Tools
     /// and stores only the file name in <c>EasyDNNNews.ArticleImage</c>; the resized
     /// <c>images/</c> variants are generated on first render. The file is added through
     /// <see cref="FileManager"/> so it is registered in DNN's file table like an upload.
+    /// An <c>imagePath</c> source needs read rights on its folder, since the copy lands in a
+    /// publicly served one.
     ///
     /// <c>imageUrl</c> is downloaded by the web server, so it is guarded against SSRF:
     /// http(s) only, every hop's host must resolve to public addresses (redirects are
@@ -70,6 +73,13 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 error = string.Equals(file.Extension, "webp", StringComparison.OrdinalIgnoreCase)
                     ? "imagePath" + WebpError
                     : "imagePath must be a jpg, jpeg, png or gif file.";
+                return null;
+            }
+
+            var folder = FolderManager.Instance.GetFolder(file.FolderId);
+            if (folder == null || !FolderPermissionController.CanViewFolder((FolderInfo)folder))
+            {
+                error = "You do not have read rights on the folder holding imagePath '" + path + "'.";
                 return null;
             }
 
