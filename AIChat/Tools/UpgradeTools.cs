@@ -332,8 +332,18 @@ namespace Satrabel.AIChat.Tools
                 }
             }
 
+            // Drop the oldest lines if the tail is over the output cap, so the newest entries survive.
+            var size = lines.Sum(l => l.Length + Environment.NewLine.Length);
+            var dropped = 0;
+            while (size > MaxOutputChars && lines.Count > 1)
+            {
+                size -= lines.Dequeue().Length + Environment.NewLine.Length;
+                dropped++;
+            }
+
             var text = new StringBuilder()
-                .AppendLine($"{file.Name}: {matched} matching line(s), last {lines.Count} shown.")
+                .AppendLine($"{file.Name}: {matched} matching line(s), last {lines.Count} shown"
+                    + (dropped > 0 ? $" ({dropped} older dropped to fit the output limit)." : "."))
                 .Append(string.Join(Environment.NewLine, lines))
                 .ToString();
 
