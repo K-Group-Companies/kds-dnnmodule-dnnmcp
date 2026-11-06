@@ -143,6 +143,13 @@ namespace KGroup.CookieConsentMcp.Tools
                 return false;
             }
 
+            // ToString() would serialize an object or array into JSON text and store it as the value.
+            if (token.Type == JTokenType.Object || token.Type == JTokenType.Array)
+            {
+                error = field.Name + " must be a single value, not an object or list.";
+                return false;
+            }
+
             switch (field.Kind)
             {
                 case Kind.Bool:

@@ -114,7 +114,12 @@ namespace KGroup.CookieConsentMcp.Tools
 
             if (placements.Count == 0)
             {
-                var tabId = ToolKit.TryInt(args, "tabId", out var requested) ? requested : portal.HomeTabId;
+                if (!TryOptionalInt(args, "tabId", out var requested))
+                {
+                    return ToolKit.Fail("tabId must be a page ID.");
+                }
+
+                var tabId = requested ?? portal.HomeTabId;
                 var tab = TabController.Instance.GetTab(tabId, portal.PortalId);
                 if (tab == null || tab.IsDeleted)
                 {
@@ -260,7 +265,13 @@ namespace KGroup.CookieConsentMcp.Tools
             var changes = new Dictionary<string, object>();
             var ignored = new List<string>();
 
-            if (config["settings"] is JObject settings)
+            var settingsToken = config["settings"];
+            if (settingsToken != null && settingsToken.Type != JTokenType.Null && !(settingsToken is JObject))
+            {
+                errors.Add("settings must be an object.");
+            }
+
+            if (settingsToken is JObject settings)
             {
                 foreach (var property in settings.Properties())
                 {
@@ -284,8 +295,8 @@ namespace KGroup.CookieConsentMcp.Tools
 
             changes["googleConsentDebugEnabled"] = false;
 
-            ResolvePolicyTab(args, config, "privacyPolicyTabId", "privacyPolicyPage", portalId, changes, notes);
-            ResolvePolicyTab(args, config, "cookiePolicyTabId", "cookiePolicyPage", portalId, changes, notes);
+            ResolvePolicyTab(args, config, "privacyPolicyTabId", "privacyPolicyPage", portalId, changes, notes, errors);
+            ResolvePolicyTab(args, config, "cookiePolicyTabId", "cookiePolicyPage", portalId, changes, notes, errors);
             errors.AddRange(CheckTabs(changes, portalId));
 
             foreach (var tag in TagIds)
@@ -298,9 +309,9 @@ namespace KGroup.CookieConsentMcp.Tools
                 }
             }
 
-            var categories = Rows(config["categories"]);
-            var catalog = Rows(config["cookieCatalog"]);
-            var rules = Rows(config["cookieRules"]);
+            var categories = Rows(config, "categories", errors);
+            var catalog = Rows(config, "cookieCatalog", errors);
+            var rules = Rows(config, "cookieRules", errors);
 
             var keys = new HashSet<string>(ConsentDb.Categories(portalId).Select(c => c.CategoryKey), System.StringComparer.OrdinalIgnoreCase);
             foreach (var row in categories)
@@ -397,9 +408,52 @@ namespace KGroup.CookieConsentMcp.Tools
             "Cookie Consent has no settings on this portal yet. Run place-cookie-consent, then load any page "
             + "of the site so the module creates its defaults.";
 
-        private static List<JObject> Rows(JToken token)
+        /// <summary>
+        /// Reads an optional list section. A section that is present but is not a list of
+        /// objects is an error, so a malformed import is refused rather than partly applied.
+        /// </summary>
+        private static List<JObject> Rows(JObject config, string section, List<string> errors)
         {
-            return token is JArray array ? array.OfType<JObject>().ToList() : new List<JObject>();
+            var token = config[section];
+            if (token == null || token.Type == JTokenType.Null)
+            {
+                return new List<JObject>();
+            }
+
+            if (!(token is JArray array))
+            {
+                errors.Add(section + " must be a list.");
+                return new List<JObject>();
+            }
+
+            var rows = array.OfType<JObject>().ToList();
+            if (rows.Count != array.Count)
+            {
+                errors.Add(section + " must contain only objects.");
+            }
+
+            return rows;
+        }
+
+        /// <summary>
+        /// Reads an optional integer argument. Returns false only when the argument is
+        /// present but is not a whole number; an absent argument gives a null value.
+        /// </summary>
+        private static bool TryOptionalInt(Dictionary<string, object> args, string name, out int? value)
+        {
+            value = null;
+            if (ToolKit.Str(args, name) == null)
+            {
+                return true;
+            }
+
+            if (!ToolKit.TryInt(args, name, out var parsed))
+            {
+                return false;
+            }
+
+            value = parsed;
+            return true;
         }
 
         private static void Require(List<string> errors, string what, string key, int keyLength, string second, int secondLength)
@@ -423,11 +477,17 @@ namespace KGroup.CookieConsentMcp.Tools
         /// Takes a policy page from the tool argument, else matches the exported page name on
         /// this portal. Exported page IDs are never used: they belong to the source site.
         /// </summary>
-        private static void ResolvePolicyTab(Dictionary<string, object> args, JObject config, string field, string pageProperty, int portalId, Dictionary<string, object> changes, List<string> notes)
+        private static void ResolvePolicyTab(Dictionary<string, object> args, JObject config, string field, string pageProperty, int portalId, Dictionary<string, object> changes, List<string> notes, List<string> errors)
         {
-            if (ToolKit.TryInt(args, field, out var tabId))
+            if (!TryOptionalInt(args, field, out var tabId))
             {
-                changes[field] = tabId;
+                errors.Add(field + " must be a page ID.");
+                return;
+            }
+
+            if (tabId.HasValue)
+            {
+                changes[field] = tabId.Value;
                 return;
             }
 
