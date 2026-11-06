@@ -40,7 +40,6 @@ This extension adds an AI-powered chat to the DNN PersonaBar and exposes DNN as 
 - **Portal management**: pages (add, get, update, delete), modules (add, get, update), HTML module content, folders and files, system files, send email, get URL HTML, get URL SEO. [More details](https://github.com/sachatrauwaen/AIChat/wiki/Tools)
 - **Open Content** (when [OpenContentMcp](https://github.com/sachatrauwaen/OpenContentAICHat) is installed): get, add, update Open Content items; manage templates.
 - **SEO**: URL SEO tool (when SeoTools is installed).
-- **Cookie Consent** (when CookieConsentMcp is installed, for EasyDNN Cookie Consent 3.x): get, export, import and set the portal's consent settings, categories, cookie catalog and cookie rules; place the module on every page with its container hidden. Tracking IDs are masked in output. [More details](AIChat/Tools/TOOLS.md#cookie-consent-tools)
 - Tools are shared between the in-portal chat and MCP clients; add your own by implementing `IMcpProvider` and registering tools with `IMcpRegistry`. Example: [Open Content AIChat](https://github.com/sachatrauwaen/OpenContentAICHat).
 
 ## Settings
