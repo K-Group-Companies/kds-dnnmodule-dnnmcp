@@ -1,0 +1,41 @@
+<dotnetnuke type="Package" version="5.0">
+  <packages>
+    <package name="LiveFormsAI" type="Library" version="01.00.00">
+      <friendlyName>Live Forms Tool Provider</friendlyName>
+      <description>Live Forms Tool Provider Library - MCP tools to list, copy and create Live Forms with email and thank-you actions.</description>
+      <iconFile></iconFile>
+      <owner>
+        <name>K-Group Companies</name>
+        <organization>K-Group Companies</organization>
+        <url>https://www.kgroupcompanies.com</url>
+        <email>support@kgroupcompanies.com</email>
+      </owner>
+      <license src="License.txt"></license>
+      <releaseNotes src="ReleaseNotes.txt"></releaseNotes>
+      <azureCompatible>true</azureCompatible>
+      <dependencies>
+        <dependency type="CoreVersion">10.03.02</dependency>
+        <dependency type="ManagedPackage" version="01.02.00">AIChat</dependency>
+        <dependency type="ManagedPackage" version="09.01.00">LiveForms</dependency>
+      </dependencies>
+      <components>
+        <component type="ResourceFile">
+          <resourceFiles>
+            <basePath>DesktopModules/OpenContentAIChat</basePath>
+            <resourceFile>
+              <name>Resources.zip</name>
+            </resourceFile>
+          </resourceFiles>
+        </component>
+        <component type="Assembly">
+          <assemblies>
+            <assembly>
+              <name>KGroup.LiveFormsAI.dll</name>
+              <path>bin</path>
+            </assembly>
+          </assemblies>
+        </component>
+      </components>
+    </package>
+  </packages>
+</dotnetnuke>

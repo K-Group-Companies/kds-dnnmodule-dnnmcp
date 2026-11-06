@@ -1,0 +1,17 @@
+EasyDNNNews AI Tools - Release Notes
+=====================================
+
+Version 01.00.00
+----------------
+Release Date: 2026-11-04
+
+Initial Release:
+- MCP tool provider library for EasyDNNNews (EasyDNNnews 15)
+- Tools: get-news-categories, get-news-articles, get-news-article, add-news-article, update-news-article, add-news-category
+- Registers its tools through DNN dependency injection when the DLL loads
+- Each tool must also be enabled per portal (DnnMcp_Tools setting)
+- Library-only package (no UI components)
+
+Requirements:
+- DNN Platform 10.3.2+
+- AIChat 01.02.00+

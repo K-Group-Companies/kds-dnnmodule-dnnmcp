@@ -1,0 +1,17 @@
+LiveForms AI Tools - Release Notes
+===================================
+
+Version 01.00.00
+----------------
+Release Date: 2026-11-04
+
+Initial Release:
+- MCP tool provider library for LiveForms (Mandeeps LiveForms 9.1)
+- Tools: get-liveforms, get-liveform, get-liveform-submission-stats, copy-liveform, add-liveform
+- Registers its tools through DNN dependency injection when the DLL loads
+- Each tool must also be enabled per portal (DnnMcp_Tools setting)
+- Library-only package (no UI components)
+
+Requirements:
+- DNN Platform 10.3.2+
+- AIChat 01.02.00+
