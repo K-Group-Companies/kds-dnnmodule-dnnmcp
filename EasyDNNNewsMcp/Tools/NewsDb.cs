@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 using DotNetNuke.Common.Utilities;
 using DotNetNuke.Data;
 using DotNetNuke.Entities.Modules;
+using DotNetNuke.Entities.Portals;
+using DotNetNuke.Security.Permissions;
 using Newtonsoft.Json.Linq;
 using Satrabel.AIChat.Tools;
 
@@ -138,6 +140,25 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 .GroupBy(m => m.ModuleID)
                 .Select(g => g.First())
                 .ToList();
+        }
+
+        /// <summary>
+        /// Null when the caller may read this portal's articles, drafts included; otherwise why not.
+        /// </summary>
+        /// <remarks>
+        /// Articles belong to the portal rather than to one module, so reading them takes what
+        /// writing one takes somewhere: edit rights on at least one news module. Portal
+        /// administrators pass even when the portal has no news module left.
+        /// </remarks>
+        public static string CheckReadAccess(int portalId)
+        {
+            if (PortalSettings.Current.UserInfo.IsAdmin
+                || NewsModules(portalId).Any(ModulePermissionController.CanEditModuleContent))
+            {
+                return null;
+            }
+
+            return "You do not have edit rights on any EasyDNNNews module on this portal, so its articles cannot be read through these tools.";
         }
 
         /// <summary>

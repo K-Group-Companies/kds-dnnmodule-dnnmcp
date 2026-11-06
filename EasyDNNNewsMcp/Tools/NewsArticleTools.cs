@@ -236,6 +236,12 @@ namespace KGroup.EasyDNNNewsMcp.Tools
         private static CallToolResult GetArticles(Dictionary<string, object> args)
         {
             var portalId = PortalSettings.Current.PortalId;
+            var denied = NewsDb.CheckReadAccess(portalId);
+            if (denied != null)
+            {
+                return ToolKit.Fail(denied);
+            }
+
             var where = new List<string> { "a.PortalID = @0" };
             var sqlArgs = new List<object> { portalId };
 
@@ -245,6 +251,11 @@ namespace KGroup.EasyDNNNewsMcp.Tools
                 if (module == null)
                 {
                     return ToolKit.Fail(error);
+                }
+
+                if (!ModulePermissionController.CanEditModuleContent(module))
+                {
+                    return ToolKit.Fail("You do not have edit rights on news module " + module.ModuleID + ".");
                 }
 
                 if (!NewsCategoryTools.ShowAllCategories(new[] { moduleId })[moduleId])
@@ -333,6 +344,12 @@ namespace KGroup.EasyDNNNewsMcp.Tools
             }
 
             var portalId = PortalSettings.Current.PortalId;
+            var denied = NewsDb.CheckReadAccess(portalId);
+            if (denied != null)
+            {
+                return ToolKit.Fail(denied);
+            }
+
             var row = LoadArticle(portalId, articleId);
             if (row == null)
             {
