@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenContentAI", "OpenConten
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeoAI", "SeoTools\SeoAI.csproj", "{B2C3D4E5-F6A7-58B9-C0D1-E2F3A4B5C6D7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CookieConsentAI", "CookieConsentMcp\CookieConsentAI.csproj", "{DD9C7AF7-98A9-437C-87AE-295B3358EDDD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{B2C3D4E5-F6A7-58B9-C0D1-E2F3A4B5C6D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2C3D4E5-F6A7-58B9-C0D1-E2F3A4B5C6D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2C3D4E5-F6A7-58B9-C0D1-E2F3A4B5C6D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD9C7AF7-98A9-437C-87AE-295B3358EDDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD9C7AF7-98A9-437C-87AE-295B3358EDDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD9C7AF7-98A9-437C-87AE-295B3358EDDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD9C7AF7-98A9-437C-87AE-295B3358EDDD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

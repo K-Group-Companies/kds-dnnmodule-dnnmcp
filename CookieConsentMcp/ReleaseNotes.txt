@@ -1,0 +1,20 @@
+Cookie Consent AI Tools - Release Notes
+========================================
+
+Version 01.00.00
+----------------
+Release Date: 2026-11-05
+
+Initial Release:
+- MCP tool provider library for EasyDNN Cookie Consent 3.0
+- Tools: get-cookie-consent, export-cookie-consent, import-cookie-consent, set-cookie-consent, place-cookie-consent
+- Export and import carry banner settings, categories, cookie catalog and cookie rules between portals; site-specific IDs (GTM, GA4, AdSense, policy pages) are never copied
+- Managed scripts are not exported or imported and stay a manual step
+- Registers its tools through DNN dependency injection when the DLL loads
+- Each tool must also be enabled per portal (DnnMcp_Tools setting)
+- Library-only package (no UI components)
+
+Requirements:
+- DNN Platform 10.3.2+
+- AIChat 01.02.00+
+- EasyDNN Cookie Consent 03.00.00+
