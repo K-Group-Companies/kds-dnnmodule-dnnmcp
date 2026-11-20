@@ -1,0 +1,19 @@
+.github/workflows/dotnet.yml
+  s_c27d2406d3bb93::t_c9728575a2dc48 8,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c526c368a07dd48f2f78ff3ae2240039aa31f354",
+  "prompts": {},
+  "sessions": {
+    "s_c27d2406d3bb93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cfc7e3ae-f85d-48f0-b9ba-8e24101fb2c0",
+        "model": "unknown"
+      },
+      "human_author": "Cameron Klenk <cameronk@kgroupcompanies.com>"
+    }
+  }
+}
